@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ringed planet -->
+    <circle cx="44" cy="44" r="13" />
+    <ellipse cx="44" cy="44" rx="22" ry="6" transform="rotate(-20 44 44)" />
+
+    <!-- satellite -->
+    <rect x="120" y="30" width="20" height="13" rx="3" transform="rotate(-18 130 36)" />
+    <path d="M108 32l9 3M152 41l9 3" />
+
+    <!-- small sparkles -->
+    <path d="M18 108v8M14 112h8" />
+    <path d="M196 128v7M192.5 131.5h7" />
+    <path d="M104 218v7M100.5 221.5h7" />
+
+    <!-- comet -->
+    <path d="M150 108l16 16" />
+    <path d="M142 102l14 14" />
+    <circle cx="172" cy="130" r="5" />
+    <path d="M176 138l7 8" />
+
+    <!-- ufo -->
+    <ellipse cx="62" cy="172" rx="21" ry="7" />
+    <path d="M48 168a14 11 0 0 1 28 0" />
+    <path d="M50 183l-4 7M62 185v8M74 183l4 7" />
+
+    <!-- rocket -->
+    <path d="M178 178c0-16 7-27 16-34 9 7 16 18 16 34l-8 13h-16l-8-13Z" />
+    <circle cx="194" cy="166" r="5.5" />
+    <path d="M186 191l-7 13 12-5M202 191l7 13-12-5" />
+
+    <!-- astronaut helmet -->
+    <circle cx="124" cy="88" r="16" />
+    <path d="M111 84a13 11 0 0 1 26 0" />
+    <path d="M108 99l-6 5M140 99l6 5" />
+  </g>
+</svg>
