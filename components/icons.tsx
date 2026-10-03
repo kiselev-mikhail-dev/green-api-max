@@ -33,14 +33,13 @@ function Icon({
   );
 }
 
-/** Скрепка в композере */
-export function IconAttach({ size = 22, className }: IconProps) {
+/** Нейтральный аватар: круг с силуэтом пользователя */
+export function IconAvatar({ size = 22, className }: IconProps) {
   return (
     <Icon size={size} className={className}>
-      <path
-        {...stroke}
-        d="M21.4 11 12.3 20.2a6 6 0 0 1-8.5-8.5l8.5-8.5a4 4 0 0 1 5.7 5.7l-8.5 8.4a2 2 0 0 1-2.8-2.8l7.8-7.8"
-      />
+      <circle {...stroke} cx="12" cy="12" r="9.2" />
+      <circle {...stroke} cx="12" cy="9.8" r="3.1" />
+      <path {...stroke} d="M6 19.1a6.7 6.7 0 0 1 12 0" />
     </Icon>
   );
 }

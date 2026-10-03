@@ -45,7 +45,7 @@ export function ConversationPane() {
   const [chatId, setChatId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    createMessage("incoming", STEP_PROMPTS.idInstance),
+    createMessage("answer", STEP_PROMPTS.idInstance),
   ]);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +73,15 @@ export function ConversationPane() {
   const { pollCount } = useIncomingNotifications({
     enabled: isListening,
     chatId,
-    onIncoming: (message) => appendMessages(message.direction, message.text),
+    // Пришедшее с сервера — ответ (белый слева); отправленное с телефона —
+    // исходящее (синее справа), как и сообщения, отправленные через API.
+    onIncoming: (message) =>
+      appendMessages(
+        message.direction === "outgoing" ? "outgoing" : "answer",
+        message.text,
+      ),
     onError: (text) =>
-      appendMessages("incoming", `Не удалось получить входящие: ${text}`),
+      appendMessages("answer", `Не удалось получить входящие: ${text}`),
   });
 
   const handleSend = async (text: string) => {
@@ -109,7 +115,7 @@ export function ConversationPane() {
       } catch (error) {
         replaceMessage(
           pendingId,
-          "incoming",
+          "answer",
           `Не удалось отправить сообщение: ${errorText(error)}`,
         );
       } finally {
@@ -123,8 +129,8 @@ export function ConversationPane() {
       saveIdInstance(text);
       setMessages((list) => [
         ...list,
-        createMessage("outgoing", text),
-        createMessage("incoming", STEP_PROMPTS.apiTokenInstance),
+        createMessage("answer", text),
+        createMessage("answer", STEP_PROMPTS.apiTokenInstance),
       ]);
       setStep("apiTokenInstance");
       return;
@@ -137,8 +143,8 @@ export function ConversationPane() {
       if (!isValidApiToken(text)) {
         setMessages((list) => [
           ...list,
-          createMessage("outgoing", maskedText),
-          createMessage("incoming", API_TOKEN_INVALID_PROMPT),
+          createMessage("answer", maskedText),
+          createMessage("answer", API_TOKEN_INVALID_PROMPT),
         ]);
         return;
       }
@@ -146,8 +152,8 @@ export function ConversationPane() {
       saveApiTokenInstance(text);
       setMessages((list) => [
         ...list,
-        createMessage("outgoing", maskedText),
-        createMessage("incoming", STEP_PROMPTS.phoneNumber),
+        createMessage("answer", maskedText),
+        createMessage("answer", STEP_PROMPTS.phoneNumber),
       ]);
       setStep("phoneNumber");
       return;
@@ -161,7 +167,7 @@ export function ConversationPane() {
     const pendingId = nextMessageId();
     setMessages((list) => [
       ...list,
-      createMessage("outgoing", phoneNumber),
+      createMessage("answer", phoneNumber),
       createMessage("note", PENDING_HINTS.creating.note, pendingId),
     ]);
     setStep("creating");
@@ -175,7 +181,7 @@ export function ConversationPane() {
       if (!result.exist) {
         replaceMessage(
           pendingId,
-          "incoming",
+          "answer",
           `Аккаунт MAX на номере ${phoneNumber} не найден. Проверьте номер телефона и попробуйте снова.`,
         );
         setStep("phoneNumber");
@@ -186,10 +192,10 @@ export function ConversationPane() {
       setIsListening(true);
       replaceMessage(
         pendingId,
-        "incoming",
+        "answer",
         `Аккаунт найден. chatId: ${result.chatId ?? "не вернулся в ответе"}`,
       );
-      appendMessages("incoming", "Теперь напишите сообщение в чате.");
+      appendMessages("answer", "Теперь напишите сообщение в чате.");
       appendMessages("note", "Слушаю входящие сообщения…");
       setStep("ready");
     } catch (error) {
@@ -199,17 +205,17 @@ export function ConversationPane() {
         resetGreenApiCredentials();
         replaceMessage(
           pendingId,
-          "incoming",
+          "answer",
           checkAccountFailedPrompt(error.status),
         );
-        appendMessages("incoming", STEP_PROMPTS.idInstance);
+        appendMessages("answer", STEP_PROMPTS.idInstance);
         setStep("idInstance");
         return;
       }
 
       replaceMessage(
         pendingId,
-        "incoming",
+        "answer",
         `Не удалось создать чат: ${errorText(error)}`,
       );
       setStep("phoneNumber");

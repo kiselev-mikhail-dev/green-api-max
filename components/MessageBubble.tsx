@@ -1,7 +1,7 @@
 import { Flex, Typography } from "@maxhub/max-ui";
 import type { ChatMessage } from "@/lib/chat-message";
 
-/** Строка ленты: служебная плашка или пузырь входящего/исходящего сообщения */
+/** Строка ленты: служебная плашка, ответ (белый слева) или исходящее (синее справа) */
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.kind === "note") {
     return (
@@ -19,7 +19,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
     <Flex justify={isOutgoing ? "end" : "start"} className="max-bubble-row">
       <span
         className={`max-bubble ${
-          isOutgoing ? "max-bubble--outgoing" : "max-bubble--incoming"
+          isOutgoing ? "max-bubble--outgoing" : "max-bubble--answer"
         }`}
       >
         <Typography.Text variant="body" color="inherit">

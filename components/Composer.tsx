@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IconButton, Textarea } from "@maxhub/max-ui";
-import { IconAttach, IconSend } from "./icons";
+import { IconAvatar, IconSend } from "./icons";
 import type { ComposerInput } from "@/lib/setup-steps";
 
 type ComposerProps = ComposerInput & {
@@ -57,11 +57,11 @@ export function Composer({
       <IconButton
         size="medium"
         variant="ghost"
-        className="max-composer__attach"
+        className="max-composer__avatar"
         disabled={disabled}
-        aria-label="Прикрепить файл"
+        aria-label="Профиль"
       >
-        <IconAttach />
+        <IconAvatar />
       </IconButton>
 
       <Textarea
