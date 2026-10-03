@@ -3,7 +3,7 @@
  *
  * В `greenApiConfig` остаются только неконфиденциальные параметры.
  * `idInstance` и `apiTokenInstance` вводятся пользователем в интерфейсе —
- * см. хук `useGreenApiCredentials` в `@/lib/use-green-api-credentials`.
+ * см. `@/lib/green-api-credentials`.
  */
 
 export type GreenApiConfig = {
@@ -11,8 +11,6 @@ export type GreenApiConfig = {
   apiUrl: string;
   /** Базовый адрес для медиафайлов */
   mediaUrl: string;
-  /** Наименование инстанса (подпись) */
-  instanceName: string;
 };
 
 /** Учётные данные инстанса, которые вводит пользователь */
@@ -25,14 +23,12 @@ export type GreenApiCredentials = {
 
 export const greenApiConfig: GreenApiConfig = {
   apiUrl: "https://3100.api.green-api.com",
-  mediaUrl: "https://3100.api.green-api.com",
-  instanceName: "Instance 310022754476",
+  mediaUrl: "https://3100.api.green-api.com"
 };
 
 export const {
   apiUrl: GREEN_API_URL,
-  mediaUrl: GREEN_API_MEDIA_URL,
-  instanceName: GREEN_API_INSTANCE_NAME,
+  mediaUrl: GREEN_API_MEDIA_URL
 } = greenApiConfig;
 
 /** Пустые учётные данные — стартовое значение до ввода пользователем */
@@ -41,14 +37,30 @@ export const emptyGreenApiCredentials: GreenApiCredentials = {
   apiTokenInstance: "",
 };
 
-/** Заполнены ли оба поля учётных данных */
-export function isGreenApiConfigured(
-  credentials: GreenApiCredentials,
-): boolean {
-  return (
-    credentials.idInstance.trim().length > 0 &&
-    credentials.apiTokenInstance.trim().length > 0
-  );
+/* --------------------------------------------------- формат полей ввода -- */
+
+/** Длина `apiTokenInstance` в Green-API (50 символов) */
+export const API_TOKEN_LENGTH = 50;
+
+/** Токен состоит только из цифр и латинских букв */
+const API_TOKEN_FORMAT = new RegExp(`^[0-9A-Za-z]{${API_TOKEN_LENGTH}}$`);
+
+/**
+ * `idInstance` — только цифры (значение подставляется в путь URL:
+ * `/waInstance{idInstance}/...`).
+ */
+export function sanitizeIdInstance(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/** `apiTokenInstance` — только цифры и латинские буквы, без прочих символов. */
+export function sanitizeApiToken(value: string): string {
+  return value.replace(/[^0-9A-Za-z]/g, "");
+}
+
+/** Токен корректен: ровно 64 символа, только цифры и латинские буквы. */
+export function isValidApiToken(value: string): boolean {
+  return API_TOKEN_FORMAT.test(value);
 }
 
 /**
@@ -70,9 +82,27 @@ export function greenApiUrl(
 }
 
 /**
+ * Ответ Green-API с HTTP-статусом вне диапазона 2xx.
+ *
+ * Отдельный класс, чтобы вызывающий код мог отличить ошибку сервиса
+ * (например неверный `apiTokenInstance`) от сетевого сбоя и от ошибок
+ * валидации входных данных.
+ */
+export class GreenApiHttpError extends Error {
+  /** HTTP-статус ответа */
+  readonly status: number;
+
+  constructor(status: number, details: string) {
+    super(`Green-API вернул ${status}${details ? `: ${details}` : ""}`);
+    this.name = "GreenApiHttpError";
+    this.status = status;
+  }
+}
+
+/**
  * Низкоуровневый запрос к Green-API.
  *
- * Бросает `Error` с понятным текстом при сетевой ошибке или ответе не 2xx.
+ * Бросает `GreenApiHttpError` при ответе не 2xx и `Error` при сетевой ошибке.
  * Пустой ответ тела трактуется как `null`.
  */
 async function greenApiRequest<T>(
@@ -89,9 +119,7 @@ async function greenApiRequest<T>(
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
-    throw new Error(
-      `Green-API вернул ${response.status}${details ? `: ${details}` : ""}`,
-    );
+    throw new GreenApiHttpError(response.status, details);
   }
 
   const text = await response.text().catch(() => "");

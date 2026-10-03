@@ -122,50 +122,6 @@ function toNotificationObject(body: unknown): Record<string, unknown> | null {
     : null;
 }
 
-/**
- * Типы уведомлений, которые не показываем в ленте:
- * это собственные статусы и наша же отправка (её показываем оптимистично).
- */
-const SILENT_WEBHOOK_TYPES = new Set([
-  "outgoingMessageStatus",
-  "outgoingAPIMessageReceived",
-]);
-
-/** Служебное уведомление, которое незачем показывать пользователю? */
-export function isSilentNotification(body: unknown): boolean {
-  const notification = toNotificationObject(body);
-
-  if (!notification) {
-    return false;
-  }
-
-  const typeWebhook = notification.typeWebhook;
-
-  return (
-    typeof typeWebhook === "string" && SILENT_WEBHOOK_TYPES.has(typeWebhook)
-  );
-}
-
-/**
- * Короткое описание уведомления для диагностики — чтобы ничего не терялось
- * молча, если структура отличается от ожидаемой.
- */
-export function describeNotification(body: unknown): string {
-  const notification = toNotificationObject(body);
-
-  if (!notification) {
-    return String(body);
-  }
-
-  const json = JSON.stringify(notification);
-  const preview = json.length > 300 ? `${json.slice(0, 300)}…` : json;
-  const typeWebhook = notification.typeWebhook;
-
-  return typeof typeWebhook === "string"
-    ? `${typeWebhook}: ${preview}`
-    : preview;
-}
-
 /** Текст сообщения: обычное или расширенное (со ссылкой) текстовое сообщение */
 function extractMessageText(messageData: {
   textMessageData?: { textMessage?: unknown };
@@ -193,8 +149,7 @@ function extractMessageText(messageData: {
  * их тоже показываем (как исходящие). Свою отправку через API
  * (`outgoingAPIMessageReceived`) не показываем: она уже есть в ленте.
  *
- * Если структура другая — возвращаем `null`, и вызывающий код покажет
- * уведомление как есть (см. `describeNotification`).
+ * Если структура другая — возвращаем `null`, и уведомление просто игнорируется.
  */
 export function parseNotificationMessage(
   body: unknown,

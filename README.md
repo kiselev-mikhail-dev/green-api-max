@@ -1,36 +1,235 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MAX Messenger — тестовый клиент на MAX UI и Green-API
 
-## Getting Started
+Демонстрационный веб-клиент мессенджера MAX: интерфейс собран на компонентах
+[`@maxhub/max-ui`](https://www.npmjs.com/package/@maxhub/max-ui), а вся переписка идёт через
+[GREEN-API](https://green-api.com/) (REST-обёртка над мессенджером MAX).
 
-First, run the development server:
+Приложение лежит в папке `max-test/` — это самостоятельный Next.js-проект.
+
+## Возможности
+
+- интерфейс чата в стиле MAX (шапка, лента сообщений, композер) на компонентах MAX UI;
+- пошаговое подключение инстанса прямо в переписке: `idInstance` → `apiTokenInstance` → номер телефона;
+- ввод по маске: `idInstance` — только цифры, `apiTokenInstance` — ровно 50 символов из цифр и
+  латинских букв; в чате токен показывается звёздочками;
+- поиск аккаунта MAX на номере и получение `chatId` (метод `checkAccount`);
+- отправка сообщений (`sendMessage`) и приём входящих в реальном времени
+  (`receiveNotification` + `deleteNotification`);
+- учётные данные сохраняются в `localStorage` и переживают перезагрузку страницы;
+- понятные сообщения об ошибках: сбой сети, ошибка сервиса, неверный номер телефона.
+
+## Требования
+
+- Node.js **20.9** или новее (проект собран и проверен на Node 24);
+- npm;
+- доступ к инстансу GREEN-API с кластера `3100` (или правка `apiUrl` под свой кластер);
+- у инстанса должны быть **включены входящие уведомления** — см. «Подготовка инстанса».
+
+## Быстрый старт
 
 ```bash
+cd max-test
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Production-сборка:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm run start
+```
 
-## Learn More
+## Скрипты
 
-To learn more about Next.js, take a look at the following resources:
+| Команда           | Что делает                                                     |
+| ----------------- | -------------------------------------------------------------- |
+| `npm run dev`     | dev-сервер Next.js на <http://localhost:3000>                   |
+| `npm run build`   | production-сборка                                               |
+| `npm run start`   | запуск уже собранного приложения                                |
+| `npm run lint`    | ESLint (`eslint.config.mjs`)                                    |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Проверка типов запускается отдельно: `npx tsc --noEmit`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Подготовка инстанса
 
-## Deploy on Vercel
+1. В личном кабинете GREEN-API создайте (или откройте готовый) инстанс и скопируйте `idInstance`
+   и `apiTokenInstance`:
+   - `idInstance` — только цифры, например `310022754476`;
+   - `apiTokenInstance` — ровно **50** символов из цифр и латинских букв, например
+     `5298223efc3a49ceb0227f5500fe0945afc3b685391c46a88d`.
+2. Убедитесь, что инстанс авторизован:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   curl "https://3100.api.green-api.com/waInstance<idInstance>/getStateInstance/<apiTokenInstance>"
+   # {"stateInstance":"authorized"}
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Включите входящие уведомления** — без этого `receiveNotification` всегда будет возвращать пусто,
+   и входящие сообщения не появятся. Сделать это можно в личном кабинете (настройки инстанса) либо
+   методом `setSettings`:
+
+   ```bash
+   curl -X POST "https://3100.api.green-api.com/waInstance<idInstance>/setSettings/<apiTokenInstance>" \
+     -H "Content-Type: application/json" \
+     -d '{"webhookUrl":"","outgoingWebhook":"yes","stateWebhook":"yes","incomingWebhook":"yes"}'
+   ```
+
+   Проверить результат: `getSettings` → поля `outgoingWebhook`, `stateWebhook`, `incomingWebhook`
+   должны быть `"yes"`.
+
+4. Адрес API задан в `lib/green-api.ts` (`greenApiConfig.apiUrl` и `mediaUrl`). Если ваш инстанс
+   находится на другом кластере — поменяйте значение там.
+
+## Как пользоваться
+
+Откройте страницу — чат сам поведёт вас по шагам. Ответ вводится в поле внизу и отправляется кнопкой
+или клавишей **Enter** (**Shift+Enter** — перенос строки).
+
+1. **«Введите idInstance (только цифры)»** — принимаются только цифры: буквы, пробелы и символы
+   в поле не вводятся вообще, в том числе при вставке из буфера.
+2. **«Введите apiTokenInstance (50 символов: цифры и латинские буквы)»** — поле принимает
+   исключительно цифры и латинские буквы и не даёт ввести больше 50 символов. В переписке значение
+   маскируется звёздочками. Если отправить токен короче 50 символов, чат попросит ввести его заново.
+3. **«Введите номер телефона»** — формат свободный: `+7 (917) 610-23-23`, `8 917 610 23 23`,
+   `+375 29 123-45-67`. Приложение оставит только цифры, а ведущую «8» заменит на «7».
+   Поддерживаются только номера РФ (`7` + 10 цифр) и РБ (`375` + 9 цифр) — этого требует `checkAccount`.
+4. **Проверка аккаунта** (`checkAccount`):
+   - аккаунта на номере нет — «Аккаунт MAX на номере … не найден», номер можно ввести снова;
+   - аккаунт есть — сохраняется `chatId`, в шапке появляется «Ожидаю входящие · опрос №N», и
+     приложение начинает принимать уведомления.
+5. **Переписка.** Текст из поля уходит методом `sendMessage`, входящие сообщения появляются в ленте
+   автоматически. В ленте показываются только сообщения текущего чата; уведомления из других чатов и
+   служебные типы подтверждаются (удаляются из очереди), но не отображаются.
+
+Если при проверке номера сервис ответил ошибкой (HTTP-статус не 200), приложение напишет
+«Что-то пошло не так при обращении к Green-API (код ответа N). Давайте начнем с начала.», очистит
+сохранённые `idInstance` и `apiTokenInstance` и запустит шаги подключения заново.
+
+## Структура проекта
+
+```text
+max-test/
+├── app/
+│   ├── layout.tsx     — корневой layout, подключает стили MAX UI (lang="ru")
+│   ├── page.tsx       — страница: MaxUI и пустой каркас до гидратации
+│   └── globals.css    — раскладка/тема поверх CSS-токенов MAX UI
+├── components/
+│   ├── ConversationPane.tsx — диалог: шаги настройки, отправка, лента сообщений
+│   ├── ChatHeader.tsx       — шапка диалога: аватар, название, статус
+│   ├── MessageBubble.tsx    — пузырь сообщения и служебная плашка
+│   ├── Composer.tsx         — поле ввода: маска, автовысота, кнопка отправки
+│   └── icons.tsx            — SVG-иконки (скрепка, отправка, замок, бейдж)
+├── lib/
+│   ├── green-api.ts                   — конфиг, построение URL, GET/POST/DELETE, форматы полей
+│   ├── green-api-chat.ts              — checkAccount: поиск аккаунта и chatId по номеру
+│   ├── green-api-message.ts           — sendMessage
+│   ├── green-api-notification.ts      — receiveNotification / deleteNotification, разбор уведомлений
+│   ├── green-api-credentials.ts       — чтение/запись idInstance и apiTokenInstance в localStorage
+│   ├── chat-message.ts                — модель сообщения ленты (id, вид, время)
+│   ├── setup-steps.ts                 — шаги настройки: подсказки, маски ввода, тексты ошибок
+│   ├── use-incoming-notifications.ts  — цикл приёма входящих уведомлений
+│   ├── use-mounted.ts                 — «страница смонтирована» для MAX UI
+│   └── format.ts                      — мелкие форматтеры (текст ошибки, маскировка секретов)
+├── public/
+│   └── space-pattern.svg — фон ленты сообщений
+└── package.json, tsconfig.json, next.config.ts, eslint.config.mjs
+```
+
+Импорты в коде идут по алиасу `@/*` (корень `max-test`), например
+`import { sendMessage } from "@/lib/green-api-message"`.
+
+## Используемые методы GREEN-API
+
+| Метод                 | Где                              | Назначение                                          |
+| --------------------- | -------------------------------- | --------------------------------------------------- |
+| `checkAccount` (POST) | `lib/green-api-chat.ts`          | есть ли аккаунт MAX на номере, получить `chatId`     |
+| `sendMessage` (POST)  | `lib/green-api-message.ts`       | отправка текстового сообщения в чат                 |
+| `receiveNotification` (GET)    | `lib/green-api-notification.ts` | получение входящего уведомления            |
+| `deleteNotification` (DELETE)  | `lib/green-api-notification.ts` | подтверждение обработки уведомления        |
+| `setSettings` (POST)  | вызывается вручную (см. выше)    | включение входящих уведомлений                       |
+
+Все адреса строятся по шаблону
+`{apiUrl}/waInstance{idInstance}/{method}/{apiTokenInstance}` функцией `greenApiUrl()`.
+
+## Особенности реализации
+
+- **Опрос вместо long-poll.** Сервер отвечает на `receiveNotification` сразу и отдаёт пустое тело,
+  если уведомлений нет, поэтому после пустого ответа приложение выдерживает паузу ~1,5 с
+  (`IDLE_DELAY_MS` в `lib/use-incoming-notifications.ts`), а после ошибки — 5 с. `receiveTimeout`
+  запрашивается 10 с — на случай, если сервер начнёт держать соединение.
+- **Только текущий чат.** Уведомление удаляется из очереди всегда, но в ленту попадает лишь сообщение
+  с `chatId`, совпадающим с текущим; остальное игнорируется (`lib/use-incoming-notifications.ts`).
+- **SSR-совместимость.** MAX UI читает `window` (например `matchMedia`) прямо во время рендера,
+  поэтому до монтирования страница отдаёт пустой каркас, а интерфейс дорисовывается после гидратации.
+  Без этого `next build` падал бы на пререндере с `window is not defined`.
+- **Маски ввода рядом с валидацией.** `sanitizeIdInstance`, `sanitizeApiToken`, `isValidApiToken`
+  и `API_TOKEN_LENGTH` лежат в `lib/green-api.ts`; подсказки в чате подставляют длину токена из
+  константы, поэтому тексты не разъезжаются с проверкой.
+- **Разные типы ошибок.** Сетевой сбой бросает обычный `Error`, ответ со статусом вне 2xx —
+  `GreenApiHttpError` с полем `status`. По этому признаку приложение отличает «неверные учётные
+  данные» от «невалидного номера» или проблем с сетью.
+
+## Частые проблемы
+
+| Симптом                                                          | Причина и решение                                                                     |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Счётчик опроса в шапке растёт, но входящие не появляются          | У инстанса выключены входящие уведомления — включите `incomingWebhook` (см. выше)       |
+| `Не удалось получить входящие: Green-API вернул 403 …`            | Неверный или истёкший `apiTokenInstance` — пройдите шаги подключения заново             |
+| `не удалось обратиться к Green-API, проверьте сеть и apiUrl`      | Нет сети, недоступен хост или неверный `apiUrl` в `lib/green-api.ts`                    |
+| Аккаунт «не найден» на существующем номере                        | `checkAccount` поддерживает только номера РФ (`7…`) и РБ (`375…`)                       |
+| Сообщения из другого чата не видны                                | Ожидаемое поведение: показываются только сообщения текущего чата                        |
+
+## Ограничения
+
+- Запросы идут **из браузера** напрямую в GREEN-API (у сервиса открыт CORS). Если политика изменится,
+  вызовы нужно переносить в route handlers Next.js (`app/api/...`).
+- `apiTokenInstance` хранится в `localStorage` в открытом виде. Для production нужен серверный прокси,
+  чтобы не отдавать токен клиенту.
+- История переписки живёт в состоянии компонента: перезагрузка страницы очищает ленту, а сохранёнными
+  остаются только `idInstance` и токен. Шаги подключения при этом проходятся заново.
+- Кнопка со «скрепкой» пока визуальная — отправка файлов и медиа не реализована.
+
+## Используемые технологии
+
+### Стек приложения
+
+| Технология                                                        | Версия              | Роль в проекте                                                                                        |
+| ----------------------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------- |
+| [Next.js](https://nextjs.org)                                     | 16.3.8              | фреймворк: App Router, сборка на Turbopack, dev-сервер                                                 |
+| [React](https://react.dev)                                        | 19.2.8              | интерфейс: компоненты, хуки (`useState`, `useEffect`, `useRef`, `useSyncExternalStore`)                 |
+| [`@maxhub/max-ui`](https://www.npmjs.com/package/@maxhub/max-ui)  | 0.5.0               | готовые компоненты MAX UI (`MaxUI`, `Avatar`, `Typography`, `Flex`, `IconButton`, `Textarea`) и CSS-токены темы |
+| [GREEN-API](https://green-api.com/)                               | REST API для MAX    | `checkAccount`, `sendMessage`, `receiveNotification`, `deleteNotification`                             |
+| [TypeScript](https://www.typescriptlang.org/)                     | 5.x                 | типизация всего кода, `strict: true`                                                                   |
+| [Tailwind CSS](https://tailwindcss.com/)                          | 4.x                 | подключён в `globals.css`; базовая раскладка, остальное — собственный CSS на токенах MAX UI             |
+| [ESLint](https://eslint.org/) + `eslint-config-next`              | 9.x / 16.3.8        | линтинг (`npm run lint`)                                                                               |
+| Node.js                                                           | 20.9 или новее      | среда выполнения (проект проверен на Node 24)                                                          |
+
+Никаких сторонних менеджеров состояния и UI-китов поверх MAX UI не используется: логика подключения
+и переписки реализована на React-хуках в `app/page.tsx` и модулях `lib/`.
+
+### Инструменты разработки
+
+Код писался в **VS Code** вместе с **[Cline](https://cline.bot/)** — open-source (Apache 2.0)
+AI-агентом для разработки, который работает как расширение для VS Code, как CLI (`npm i -g cline`)
+и как отдельное приложение. В этом проекте Cline был исполнителем:
+
+- создавал и правил файлы (`app/page.tsx`, все модули `lib/`, `globals.css`, SVG-ассеты, этот README);
+- запускал команды в терминале и читал вывод: `npm install`, `npx tsc --noEmit`, `npm run lint`,
+  `npm run build`, а также `curl` к методам GREEN-API (`getStateInstance`, `getSettings`,
+  `receiveNotification`) для живой проверки поведения инстанса;
+- искал по коду и по документации (MAX UI, Green-API), чтобы подобрать компоненты и форматы запросов;
+- работал в двух режимах: **Plan** — согласовать подход, **Act** — выполнить; каждая правка показывается
+  диффом и её можно отклонить, поддержаны чекпоинты и откат.
+
+Важно, что Cline не привязан к одному провайдеру: модель задаётся в настройках (Claude, GPT, Gemini,
+OpenRouter, AWS Bedrock, локальные Ollama / LM Studio или любой OpenAI-совместимый endpoint), а код
+проекта от этого выбора не зависит. Через MCP-серверы агенту можно подключать внешние системы, а
+`.clinerules` в репозитории описывают принятые в проекте стандарты.
+
+Роли разделены так: человек формулировал требования и принимал результат, Cline — реализовывал и
+проверял. Все тексты интерфейса, подписи шагов и этот README — тоже результат работы агента.
+
+Прочее окружение: **npm** — менеджер пакетов, **curl** — ручные запросы к API, **Git** — версионирование.
